@@ -1,11 +1,14 @@
-package main.java.il.ac.telhai.os.hardware;
+package il.ac.telhai.os.hardware;
 
 import org.junit.Test;
-
 
 public class TimerTest extends CPU {
 	private static final int FREQUENCY = 10;
 	Clock clock = new Clock(FREQUENCY);
+
+	public TimerTest(Clock clock, RealMemory realMemory) {
+		super(clock, realMemory);
+	}
 
 	@Test
 	public void test() {
