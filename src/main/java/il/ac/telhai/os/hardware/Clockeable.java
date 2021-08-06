@@ -1,4 +1,4 @@
-package main.java.il.ac.telhai.os.hardware;
+package il.ac.telhai.os.hardware;
 
 
 /**
