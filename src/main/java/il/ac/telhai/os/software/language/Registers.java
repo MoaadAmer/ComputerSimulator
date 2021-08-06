@@ -1,8 +1,7 @@
 package il.ac.telhai.os.software.language;
 
-import org.apache.log4j.Logger;
-
 import java.util.Arrays;
+import org.apache.log4j.Logger;
 
 /**
  * 
@@ -27,7 +26,7 @@ public class Registers {
 	public Registers(Registers other) {
 		registers = Arrays.copyOf(other.registers, NUMBER_OF_REGISTERS);
 	}
-
+	
 	public int get(Register register) {
 		return registers[register.ordinal()];
 	}
@@ -36,11 +35,11 @@ public class Registers {
 		logger.trace(register + "=" + value);
 		registers[register.ordinal()] = value;
 	}
-
+	
 	public void setFlag (int flagMask, boolean value) {
 		int flags = get(Register.FL);
 		if (value) {
-			flags |= flagMask;
+			flags |= flagMask;			
 		} else {
 			flags &= ~flagMask;
 		}

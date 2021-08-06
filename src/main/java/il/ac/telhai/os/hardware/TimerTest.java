@@ -4,11 +4,12 @@ import org.junit.Test;
 
 public class TimerTest extends CPU {
 	private static final int FREQUENCY = 10;
-	Clock clock = new Clock(FREQUENCY);
-
-	public TimerTest(Clock clock, RealMemory realMemory) {
-		super(clock, realMemory);
+	private static final Clock clock = new Clock(FREQUENCY);  
+	
+	public TimerTest() {
+		super(clock, new RealMemory(100, 1));
 	}
+
 
 	@Test
 	public void test() {
@@ -16,9 +17,14 @@ public class TimerTest extends CPU {
 		t.set(10);
 		clock.run();
 	}
-
-	public void interrupt(InterruptSource source) {
+	
+	public void interrupt (InterruptSource source) {
 		clock.shutdown();
+	}
+	
+	@Override
+	public void tick() {  // So that the CPU does not really work
+		
 	}
 
 }

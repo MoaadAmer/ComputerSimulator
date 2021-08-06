@@ -1,11 +1,11 @@
 package il.ac.telhai.os.software.language;
 
-import org.apache.log4j.Logger;
-
 import java.text.ParseException;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
 
 /**
  * 
@@ -51,7 +51,7 @@ public class AssemblerLine {
 		op2 = Operand.newOperand(matcher.group(OP2_GROUP), symbolTable);
 		if (mnemonic.getParams() == 2 && op2 == null) throw new ParseException(mnemonic + ":needs two operands", 0);
 		if (mnemonic.getParams() == 1 && (op1 == null || op2 != null)) throw new ParseException(mnemonic + ":needs one operands", 0);
-		if (mnemonic.getParams() == 0 && (op1 != null || op2 != null)) throw new ParseException(mnemonic + ":needs no operands", 0);
+		if (mnemonic.getParams() == 0 && (op1 != null || op2 != null)) throw new ParseException(mnemonic + ":needs no operands", 0); 
 	}
 
 	public String getLabel() {

@@ -1,51 +1,56 @@
 package il.ac.telhai.os.hardware;
 
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
+/**
+ * 
+ * @author cmshalom
+ * This class simulates a clock with a given frequency
+ * To every device known to it, it will send
+ * approximately frequency ticks per second
+ * as long as it is powered on
+ * Devices are made known to it invoking the addDevice method
+ */
 public class Clock {
+	private long period;
+	private Set<Clockeable> devices;
+	private boolean poweredOn;
+	
+	public Clock (double frequency) {
+		period = (int) (1000 / frequency);
+		devices = new HashSet<Clockeable>();
+		poweredOn = true;
+	}
+	
+	public void addDevice(Clockeable device) {
+		devices.add(device);
+	}
+	
+	/**
+	 * The clock start to provide ticks to all devices until it is powered off
+	 */
+	public void run() {
+		while(poweredOn) {
+			try {
+				Thread.sleep(period);
+			} catch (InterruptedException e) {
+				return;
+			}
+			for (Clockeable device : devices) {
+				device.tick();
+			}
+		}
+	}
+	
+	/**
+	 * No ticks will be send after the period the clock is powered off.
+	 * However all the devices will continue to get (at most 1) tick
+	 * during the current period
+	 */
+	public void shutdown () {
+		poweredOn = false;
+	}
 
-    private double frequency;
-    private List<Clockeable> devices;
-    private boolean isALive;
-
-
-    //    יצירה של שעון חדש עם תדירות פולסים לשניה
-    public Clock(double frequency) {
-        this.frequency = frequency;
-        devices = new ArrayList<>();
-        isALive = true;
-
-    }
-
-    //    רכיב המעוניין לקבל פולסים צריך להירשם אצל השעון בעזרת השיטה הבאה
-    public void addDevice(Clockeable device) {
-        devices.add(device);
-    }
-
-    //    התחלת הריצה של השעון
-    public void run() {
-
-        while (isALive) {
-            for (Clockeable device : devices) {
-                device.tick();
-
-            }
-            try {
-                Thread.sleep((long) (1000 / frequency));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public boolean isALive() {
-        return isALive;
-    }
-
-    //    הפסקה של השעון
-    public void shutdown() {
-        isALive = false;
-    }
 }

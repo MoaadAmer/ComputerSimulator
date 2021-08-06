@@ -1,10 +1,11 @@
 package il.ac.telhai.os.software.language;
 
-import org.apache.log4j.Logger;
+import java.text.ParseException;
+
 import il.ac.telhai.os.hardware.Memory;
 import il.ac.telhai.os.hardware.RealMemory;
 
-import java.text.ParseException;
+import org.apache.log4j.Logger;
 
 /**
  * 
@@ -19,7 +20,7 @@ public class Instruction {
 
 	public Instruction(AssemblerLine line) throws ParseException {
 		mnemonicCode = line.getMnemonic();
-		op1 = (InstructionOperand) line.getOp1();
+		op1 = (InstructionOperand) line.getOp1();			
 		op2 = (InstructionOperand) line.getOp2();
 	}
 
@@ -27,6 +28,21 @@ public class Instruction {
 		this(new AssemblerLine(commandLine, null));		
 	}
 
+	/**
+	 * Use this only if your string is safe (no compile errors)
+	 * @param commandLine
+	 * @return
+	 */
+	public static Instruction create (String commandLine) {
+		try {
+			return new Instruction(commandLine);
+		} catch (ParseException e) {
+			e.printStackTrace();
+			System.exit(1);
+			return null; // To please the compiler
+		}
+	}
+	
 	public void execute (Registers registers, Memory memory) {
 		int result;
 		
@@ -78,7 +94,7 @@ public class Instruction {
 			break;
 		case JMP: 
 			result = op1.getWord(registers, memory);
-			registers.set(Register.IP, result);
+			registers.set(Register.IP, result); 
 			break;
 		case JZ:
 			result = op1.getWord(registers, memory);
@@ -89,9 +105,11 @@ public class Instruction {
 			if (!registers.getFlag(Registers.FLAG_ZERO))  registers.set(Register.IP, result); 
 			break;
 		case PUSH:
-			// TODO: Add stack Overflow here
+			if (registers.get(Register.SP) < RealMemory.BYTES_PER_INT) {
+				throw new StackOverflow();
+			}
 			result = op1.getWord(registers, memory);
-			offset  = registers.get(Register.SP)- RealMemory.BYTES_PER_INT;
+			offset  = registers.get(Register.SP)-RealMemory.BYTES_PER_INT;
 			memory.writeWord(registers.get(Register.SS), offset, result);
 			registers.set(Register.SP, offset);
 			break;
@@ -101,9 +119,11 @@ public class Instruction {
 			registers.add(Register.SP, RealMemory.BYTES_PER_INT);
 			break;
 		case CALL:
-			// TODO: Add stack overflow here
+			if (registers.get(Register.SP) < RealMemory.BYTES_PER_INT) {
+				throw new StackOverflow();
+			}
 			result = op1.getWord(registers, memory);
-			offset  = registers.get(Register.SP)- RealMemory.BYTES_PER_INT;
+			offset  = registers.get(Register.SP)-RealMemory.BYTES_PER_INT;
 			memory.writeWord(registers.get(Register.SS), offset, registers.get(Register.IP));
 			registers.set(Register.SP, offset);
 			registers.set(Register.IP, result);

@@ -3,9 +3,15 @@ package il.ac.telhai.os.software.language;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.text.ParseException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Scanner;
 
-public class Program {
+import il.ac.telhai.os.software.Software;
+
+public class Program implements Software {
 	private String fileName;
 	private int entryPoint;
 	private int stackSize;
@@ -24,7 +30,7 @@ public class Program {
 				case 1:  // Directives
 					break;
 				case 2:
-					lines.add(new Instruction(line));
+					lines.add(new Instruction (line));
 					break;
 				default:
 					throw new RuntimeException("Invalid Mnemonic Type for " + line.getMnemonic() + ". Check Mnemonic.java");
@@ -76,7 +82,7 @@ public class Program {
 		} catch (Exception e) {
 			throw new RuntimeException("MAIN, STACK_SIZE or DATA_SEGMENTS undefined");
 		}
-		return symbolTable;
+		return symbolTable;    	
 	}
 
 	public Instruction fetchLine(Registers r) {

@@ -1,13 +1,13 @@
 package il.ac.telhai.os.hardware;
 
+import static org.junit.Assert.*;
+
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-
 public class ClockTest implements Clockeable {
-	private static final int FREQUENCY = 10;
-	Clock clock = new Clock(FREQUENCY);
 	private int ticks = 0;
+	private static final int FREQUENCY = 10;
+	Clock clock = new Clock(FREQUENCY);  
 
 	@Test
 	public void test() throws InterruptedException {

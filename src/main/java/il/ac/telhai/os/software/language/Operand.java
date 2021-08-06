@@ -2,7 +2,6 @@ package il.ac.telhai.os.software.language;
 
 import java.text.ParseException;
 import java.util.Map;
-
 public abstract class Operand {
 		
 	/**
@@ -25,7 +24,7 @@ public abstract class Operand {
     	}
     	
     	try {
-        	return new RegisterOperand(isIndirect, Register.valueOf(s));
+        	return new RegisterOperand (isIndirect, Register.valueOf(s));
     	} catch (IllegalArgumentException iae) {
     		try {
                 return new AbsoluteOperand(isIndirect, Integer.parseInt(s)) ;

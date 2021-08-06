@@ -1,8 +1,8 @@
 package il.ac.telhai.os.hardware;
 
-import org.junit.Test;
+import static org.junit.Assert.*;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class RealMemoryTest {
 	RealMemory memory = new RealMemory(128, 128);
@@ -15,7 +15,6 @@ public class RealMemoryTest {
 
 	@Test
 	public void testWriteInt() {
-
 		memory.writeWord(2, 12, 2500);
 		assertEquals(2500, memory.readWord(2, 12));
 		assertEquals(0, memory.readByte(2, 12));
@@ -23,7 +22,7 @@ public class RealMemoryTest {
 		assertEquals(9, memory.readByte(2, 14));
 		assertEquals(-60, memory.readByte(2, 15));
 	}
-
+	
 	@Test
 	public void testdma() {
 		memory.writeWord(2, 12, 2500);
