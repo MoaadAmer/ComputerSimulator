@@ -1,14 +1,10 @@
 package il.ac.telhai.os.software;
 
-import il.ac.telhai.os.hardware.CPU;
-import il.ac.telhai.os.hardware.InterruptSource;
-import il.ac.telhai.os.hardware.Peripheral;
-import il.ac.telhai.os.hardware.PowerSwitch;
+import il.ac.telhai.os.hardware.*;
 import il.ac.telhai.os.software.language.Instruction;
 import il.ac.telhai.os.software.language.Operand;
-import il.ac.telhai.os.software.language.Register;
 import il.ac.telhai.os.software.language.SystemCall;
-import il.ac.telhai.os.software.scheduler.FCFSScheduler;
+import il.ac.telhai.os.software.scheduler.RoundRobinScheduler;
 import il.ac.telhai.os.software.scheduler.Scheduler;
 import org.apache.log4j.Logger;
 
@@ -20,9 +16,9 @@ public class OperatingSystem implements Software {
     private static OperatingSystem instance = null;
     CPU cpu;
     private Set<Peripheral> peripherals;
+    private Timer timer;
     private boolean initialized = false;
     private Scheduler scheduler;
-
 
     public OperatingSystem(CPU cpu, Set<Peripheral> peripherals) {
         if (instance != null) {
@@ -42,7 +38,6 @@ public class OperatingSystem implements Software {
             initialize();
         } else {
             scheduler.schedule();
-            ;
         }
     }
 
@@ -52,7 +47,7 @@ public class OperatingSystem implements Software {
         if (!init.exec("src/main/resources/init.prg")) {
             throw new IllegalArgumentException("Cannot load init");
         }
-        scheduler = new FCFSScheduler(cpu, init);
+        scheduler = new RoundRobinScheduler(cpu, init, timer);
         scheduler.schedule();
         initialized = true;
     }
@@ -62,10 +57,13 @@ public class OperatingSystem implements Software {
             if (p instanceof PowerSwitch) {
                 cpu.setInterruptHandler(p.getClass(), new PowerSwitchInterruptHandler());
             }
+            if( p instanceof Timer) {
+                timer = (Timer) p;
+                cpu.setInterruptHandler(p.getClass(), new TimerInterruptHandler());
+            }
         }
         cpu.setInterruptHandler(SystemCall.class, new SystemCallInterruptHandler());
     }
-
 
     private void shutdown() {
         logger.info("System going for shutdown");
@@ -76,6 +74,15 @@ public class OperatingSystem implements Software {
         @Override
         public void handle(InterruptSource source) {
             shutdown();
+        }
+    }
+
+    private class TimerInterruptHandler implements InterruptHandler {
+        @Override
+        public void handle(InterruptSource source) {
+            ProcessControlBlock current = scheduler.removeCurrent();
+            scheduler.addReady(current);
+            scheduler.schedule();
         }
     }
 
@@ -100,17 +107,11 @@ public class OperatingSystem implements Software {
                     current.exec(cpu.getString(op1));
                     current.run(cpu);
                     break;
-                case LOG:
-                    logger.info(cpu.getString(call.getOp1()));
-                    current.run(cpu);
-                    break;
-
                 case EXIT:
                     current.exit(cpu.getWord(op1));
                     scheduler.removeCurrent();
                     scheduler.schedule();
                     break;
-
                 case GETPID:
                     current.getPid();
                     current.run(cpu);
@@ -118,6 +119,17 @@ public class OperatingSystem implements Software {
                 case GETPPID:
                     current.getPPid();
                     current.run(cpu);
+                    break;
+                case LOG:
+                    logger.info(cpu.getString(call.getOp1()));
+                    current.run(cpu);
+                    break;
+
+                case YIELD:
+                    ProcessControlBlock curr = scheduler.removeCurrent();
+                    scheduler.schedule();
+                    scheduler.addReady(curr);
+
                     break;
 
                 default:

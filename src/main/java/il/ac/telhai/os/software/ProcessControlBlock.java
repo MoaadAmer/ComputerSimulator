@@ -17,7 +17,7 @@ import java.util.Set;
 public class ProcessControlBlock {
     private static final Logger logger = Logger.getLogger(ProcessControlBlock.class);
 
-    private static ProcessControlBlock root = null;  // The first process created
+    private static ProcessControlBlock root = null; // The first process created
     private static int lastId = 0;
     private static Map<Integer, ProcessControlBlock> idMap = new HashMap<Integer, ProcessControlBlock>();
 
@@ -33,18 +33,19 @@ public class ProcessControlBlock {
         if (parent != null) {
             parent.children.add(this);
         } else {
-            if (root != null) throw new IllegalArgumentException("Only one root process allowed");
+            if (root != null)
+                throw new IllegalArgumentException("Only one root process allowed");
             root = this;
         }
         this.parent = parent;
 
-        //                  Assign an id to process
+        // Assign an id to process
         do {
             lastId++;
         } while (idMap.containsKey(lastId));
         this.id = lastId;
 
-        //                  Add to the id Map
+        // Add to the id Map
         idMap.put(this.id, this);
 
         if (parent != null) {
@@ -75,18 +76,17 @@ public class ProcessControlBlock {
     }
 
     public void exit(int status) {
-		root.children.addAll(children);
-		for (ProcessControlBlock child: children) {
-			child.parent = root;
-		}
-		children.clear();
-		if (parent != null)
-			parent.children.remove(this);
+        assert (parent != null);
+        root.children.addAll(children);
+        for (ProcessControlBlock child : children) {
+            child.parent = root;
+        }
+        children.clear();
+        parent.children.remove(this);
 
-		idMap.remove(id);
+        idMap.remove(id);
 
     }
-
 
     public ProcessControlBlock fork() {
         ProcessControlBlock child = new ProcessControlBlock(this);
@@ -96,8 +96,6 @@ public class ProcessControlBlock {
     }
 
     public void run(CPU cpu) {
-        // TODO (not for students): The parameter cpu is currently unused.
-        // It is useless if cpu will remain a static variable of Operating System
         cpu.contextSwitch(program, registers);
         registers.setFlag(Registers.FLAG_USER_MODE, true);
     }
@@ -130,6 +128,5 @@ public class ProcessControlBlock {
     public String toString() {
         return "Process [id=" + id + ", program=" + program.getFileName() + "]";
     }
-
 
 }
