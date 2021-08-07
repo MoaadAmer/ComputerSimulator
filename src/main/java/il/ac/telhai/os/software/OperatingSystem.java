@@ -17,6 +17,7 @@ public class OperatingSystem implements Software {
 	CPU cpu;
 	private Set<Peripheral> peripherals;
 	private boolean initialized = false;
+	Process init;
 
 	public OperatingSystem (CPU cpu, Set<Peripheral> peripherals) {
 		if (instance != null) {
@@ -35,18 +36,14 @@ public class OperatingSystem implements Software {
 		if (!initialized) {
 			initialize();
 		} else {
-			if (Process.process != null) {
-				Process.process.run(cpu);
-			} else {
-				logger.info( "Idle, nothing to do....");				
-			}
+			init.run(cpu);
 		}
 	}
 		
 	private void initialize() {
 		installHandlers();
-		Process init = new Process(null);
-		if (!init.exec("src/main/resources/init.prg")) {
+		init = new Process(null);
+		if (!init.exec("src/main/resources/test.prg")) {
 			throw new IllegalArgumentException ("Cannot load init");
 		}
 		initialized = true;
@@ -82,6 +79,19 @@ public class OperatingSystem implements Software {
 			case SHUTDOWN:
 				shutdown();
 				break;
+			case FORK:
+				init.fork();
+				init.run(cpu);
+				break;
+			case EXEC:
+				init.exec(call.getOp1().toString());
+				init.run(cpu);
+				break;
+			case LOG:
+				logger.info(call.getOp1());
+				init.run(cpu);
+				break;
+
 			default:
 				throw new IllegalArgumentException("Unknown System Call:" + call);
 			}
