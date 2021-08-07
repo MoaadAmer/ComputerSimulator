@@ -1,102 +1,128 @@
 package il.ac.telhai.os.software;
 
-import java.util.Set;
-import org.apache.log4j.Logger;
-
 import il.ac.telhai.os.hardware.CPU;
 import il.ac.telhai.os.hardware.InterruptSource;
 import il.ac.telhai.os.hardware.Peripheral;
 import il.ac.telhai.os.hardware.PowerSwitch;
 import il.ac.telhai.os.software.language.Instruction;
+import il.ac.telhai.os.software.language.Operand;
+import il.ac.telhai.os.software.language.Register;
 import il.ac.telhai.os.software.language.SystemCall;
+import il.ac.telhai.os.software.scheduler.FCFSScheduler;
+import il.ac.telhai.os.software.scheduler.Scheduler;
+import org.apache.log4j.Logger;
+
+import java.util.Set;
 
 public class OperatingSystem implements Software {
-	private static final Logger logger = Logger.getLogger(OperatingSystem.class);
+    private static final Logger logger = Logger.getLogger(OperatingSystem.class);
 
-	private static OperatingSystem instance = null;
-	CPU cpu;
-	private Set<Peripheral> peripherals;
-	private boolean initialized = false;
-	Process init;
-
-	public OperatingSystem (CPU cpu, Set<Peripheral> peripherals) {
-		if (instance != null) {
-			throw new IllegalStateException("Operating System is a singleton");
-		}
-		instance = this;
-		this.cpu = cpu;
-		this.peripherals = peripherals;
-	}
-
-	public static OperatingSystem getInstance() {
-		return instance;
-	}
-
-	public void step() {
-		if (!initialized) {
-			initialize();
-		} else {
-			init.run(cpu);
-		}
-	}
-		
-	private void initialize() {
-		installHandlers();
-		init = new Process(null);
-		if (!init.exec("src/main/resources/test.prg")) {
-			throw new IllegalArgumentException ("Cannot load init");
-		}
-		initialized = true;
-	}	
-	
-	private void installHandlers() {
-		for (Peripheral p : peripherals) {
-			if (p instanceof PowerSwitch) {
-				cpu.setInterruptHandler(p.getClass(), new PowerSwitchInterruptHandler());
-			}
-		}
-		cpu.setInterruptHandler(SystemCall.class, new SystemCallInterruptHandler());
-	}
+    private static OperatingSystem instance = null;
+    CPU cpu;
+    private Set<Peripheral> peripherals;
+    private boolean initialized = false;
+    private Scheduler scheduler;
 
 
-	private void shutdown() {
-		logger.info( "System going for shutdown");
-		cpu.execute(Instruction.create("HALT"));
-	}
+    public OperatingSystem(CPU cpu, Set<Peripheral> peripherals) {
+        if (instance != null) {
+            throw new IllegalStateException("Operating System is a singleton");
+        }
+        instance = this;
+        this.cpu = cpu;
+        this.peripherals = peripherals;
+    }
 
-	private class PowerSwitchInterruptHandler implements InterruptHandler {
-		@Override
-		public void handle(InterruptSource source) {
-			shutdown();
-		}
-	}
+    public static OperatingSystem getInstance() {
+        return instance;
+    }
 
-	private class SystemCallInterruptHandler implements InterruptHandler {
-		@Override
-		public void handle(InterruptSource source) {
-			SystemCall call = (SystemCall) source;
-			switch (call.getMnemonicCode()) {
-			case SHUTDOWN:
-				shutdown();
-				break;
-			case FORK:
-				init.fork();
-				init.run(cpu);
-				break;
-			case EXEC:
-				init.exec(call.getOp1().toString());
-				init.run(cpu);
-				break;
-			case LOG:
-				logger.info(call.getOp1());
-				init.run(cpu);
-				break;
+    public void step() {
+        if (!initialized) {
+            initialize();
+        } else {
+            scheduler.schedule();
+            ;
+        }
+    }
 
-			default:
-				throw new IllegalArgumentException("Unknown System Call:" + call);
-			}
-		}
-	}
+    private void initialize() {
+        installHandlers();
+        ProcessControlBlock init = new ProcessControlBlock(null);
+        if (!init.exec("src/main/resources/init.prg")) {
+            throw new IllegalArgumentException("Cannot load init");
+        }
+        scheduler = new FCFSScheduler(cpu, init);
+        scheduler.schedule();
+        initialized = true;
+    }
 
-	
+    private void installHandlers() {
+        for (Peripheral p : peripherals) {
+            if (p instanceof PowerSwitch) {
+                cpu.setInterruptHandler(p.getClass(), new PowerSwitchInterruptHandler());
+            }
+        }
+        cpu.setInterruptHandler(SystemCall.class, new SystemCallInterruptHandler());
+    }
+
+
+    private void shutdown() {
+        logger.info("System going for shutdown");
+        cpu.execute(Instruction.create("HALT"));
+    }
+
+    private class PowerSwitchInterruptHandler implements InterruptHandler {
+        @Override
+        public void handle(InterruptSource source) {
+            shutdown();
+        }
+    }
+
+    private class SystemCallInterruptHandler implements InterruptHandler {
+        @Override
+        public void handle(InterruptSource source) {
+            SystemCall call = (SystemCall) source;
+            Operand op1 = call.getOp1();
+            @SuppressWarnings("unused")
+            Operand op2 = call.getOp2();
+            ProcessControlBlock current = scheduler.getCurrent();
+            switch (call.getMnemonicCode()) {
+                case SHUTDOWN:
+                    shutdown();
+                    break;
+                case FORK:
+                    ProcessControlBlock child = current.fork();
+                    scheduler.addReady(child);
+                    current.run(cpu);
+                    break;
+                case EXEC:
+                    current.exec(cpu.getString(op1));
+                    current.run(cpu);
+                    break;
+                case LOG:
+                    logger.info(cpu.getString(call.getOp1()));
+                    current.run(cpu);
+                    break;
+
+                case EXIT:
+                    current.exit(cpu.getWord(op1));
+                    scheduler.removeCurrent();
+                    scheduler.schedule();
+                    break;
+
+                case GETPID:
+                    current.getPid();
+                    current.run(cpu);
+                    break;
+                case GETPPID:
+                    current.getPPid();
+                    current.run(cpu);
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Unknown System Call:" + call);
+            }
+        }
+    }
 }
