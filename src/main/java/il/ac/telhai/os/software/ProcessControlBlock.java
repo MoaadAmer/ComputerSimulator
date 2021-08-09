@@ -1,7 +1,9 @@
 package il.ac.telhai.os.software;
 
 import il.ac.telhai.os.hardware.CPU;
+import il.ac.telhai.os.hardware.PageTableEntry;
 import il.ac.telhai.os.hardware.RealMemory;
+import il.ac.telhai.os.software.language.Operand;
 import il.ac.telhai.os.software.language.Program;
 import il.ac.telhai.os.software.language.Register;
 import il.ac.telhai.os.software.language.Registers;
@@ -17,7 +19,7 @@ import java.util.Set;
 public class ProcessControlBlock {
     private static final Logger logger = Logger.getLogger(ProcessControlBlock.class);
 
-    private static ProcessControlBlock root = null; // The first process created
+    private static ProcessControlBlock root = null;  // The first process created
     private static int lastId = 0;
     private static Map<Integer, ProcessControlBlock> idMap = new HashMap<Integer, ProcessControlBlock>();
 
@@ -27,25 +29,25 @@ public class ProcessControlBlock {
     private int id;
     private Program program;
     Registers registers;
+    private PageTableEntry[] pageTable;
 
     public ProcessControlBlock(ProcessControlBlock parent) {
         // Add to process tree
         if (parent != null) {
             parent.children.add(this);
         } else {
-            if (root != null)
-                throw new IllegalArgumentException("Only one root process allowed");
+            if (root != null) throw new IllegalArgumentException("Only one root process allowed");
             root = this;
         }
         this.parent = parent;
 
-        // Assign an id to process
+        //                  Assign an id to process
         do {
             lastId++;
         } while (idMap.containsKey(lastId));
         this.id = lastId;
 
-        // Add to the id Map
+        //                  Add to the id Map
         idMap.put(this.id, this);
 
         if (parent != null) {
@@ -72,6 +74,11 @@ public class ProcessControlBlock {
             return false;
         }
         setRegistersFor(program);
+        pageTable = new PageTableEntry[program.getDataSegments() + 2];
+        for (int i = 0; i < pageTable.length; i++) {
+            pageTable[i] = new PageTableEntry();
+        }
+
         return true;
     }
 
@@ -88,6 +95,7 @@ public class ProcessControlBlock {
 
     }
 
+
     public ProcessControlBlock fork() {
         ProcessControlBlock child = new ProcessControlBlock(this);
         child.registers.set(Register.AX, 0);
@@ -97,6 +105,8 @@ public class ProcessControlBlock {
 
     public void run(CPU cpu) {
         cpu.contextSwitch(program, registers);
+        cpu.setPageTable(pageTable);
+
         registers.setFlag(Registers.FLAG_USER_MODE, true);
     }
 
@@ -107,6 +117,19 @@ public class ProcessControlBlock {
     public void getPPid() {
         registers.set(Register.AX, parent == null ? -1 : parent.id);
     }
+
+    public int getWord(Operand op) {
+        return op.getWord(registers, OperatingSystem.getInstance().cpu);
+    }
+
+    public int getByte(Operand op) {
+        return op.getByte(registers, OperatingSystem.getInstance().cpu);
+    }
+
+    public String getString(Operand op) {
+        return op.getString(registers, OperatingSystem.getInstance().cpu);
+    }
+
 
     public Program getProgram() {
         return program;
@@ -128,5 +151,6 @@ public class ProcessControlBlock {
     public String toString() {
         return "Process [id=" + id + ", program=" + program.getFileName() + "]";
     }
+
 
 }
