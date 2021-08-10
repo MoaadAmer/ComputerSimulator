@@ -1,5 +1,6 @@
 package il.ac.telhai.os.hardware;
 
+import il.ac.telhai.os.software.SegmentationViolation;
 import org.apache.log4j.Logger;
 
 /**
@@ -43,43 +44,42 @@ public class MMU implements Memory {
         return pageTable == null ? memory.getNumberOfSegments() : pageTable.length;
     }
 
-    @Override
-    public byte readByte(int pageNo, int offset) {
-        pageNo = translate(pageNo);
-        return pageNo != -1 ? memory.readByte(pageNo, offset) : -1;
+    public void copySegment(int destinationSegment, int sourceSegment) {
+        memory.dma(destinationSegment, sourceSegment);
+    }
+
+    int translateSegment(int pageNo, boolean isWrite) {
+
+        if (pageTable == null) return pageNo;
+        PageTableEntry entry = (pageNo >= 0 && pageNo < pageTable.length) ? pageTable[pageNo] : null;
+        if (entry == null || !entry.isMappedtoMemory()) throw new PageFault(entry);
+        if (entry.isCopyOnWrite() && isWrite) throw new PageFault(entry);
+        return entry.getSegmentNo();
 
     }
 
-    private int translate(int pageNo) {
-
-        if (pageTable != null) {
-            if (pageNo < pageTable.length && pageTable[pageNo].isMappedtoMemory()) {
-                return pageTable[pageNo].getSegmentNo();
-
-            }
-            throw new PageFault(pageTable[pageNo]);
-        }
-        return -1;
+    @Override
+    public byte readByte(int pageNo, int offset) {
+        int segmentNo = translateSegment(pageNo, false);
+        return memory.readByte(segmentNo, offset);
     }
 
     @Override
     public void writeByte(int pageNo, int offset, byte value) {
-        pageNo = translate(pageNo);
-        if (pageNo != -1)
-            memory.writeByte(pageNo, offset, value);
+        int segmentNo = translateSegment(pageNo, true);
+        memory.writeByte(segmentNo, offset, value);
     }
 
     @Override
     public int readWord(int pageNo, int offset) {
-        pageNo = translate(pageNo);
-        return pageNo != -1 ? memory.readWord(pageNo, offset) : -1;
+        int segmentNo = translateSegment(pageNo, false);
+        return memory.readWord(segmentNo, offset);
     }
 
     @Override
     public void writeWord(int pageNo, int offset, int value) {
-        pageNo = translate(pageNo);
-        if (pageNo != -1)
-            memory.writeWord(pageNo, offset, value);
+        int segmentNo = translateSegment(pageNo, true);
+        memory.writeWord(segmentNo, offset, value);
     }
 
 }

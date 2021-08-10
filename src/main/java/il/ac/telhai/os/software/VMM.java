@@ -23,11 +23,52 @@ public class VMM implements InterruptHandler {
 
     private void initMemoryFreeList() {
         logger.info("Initializing Real Memory");
-        freeMemoryPages = new LinkedList<Integer>();
+        freeMemoryPages = new LinkedList<>();
         for (int i = 1; i < this.numberOfRealSegments; i++) {
             freeMemoryPages.add(i);
         }
         logger.info("Real Memory Initialized");
+    }
+
+    public PageTableEntry[] clonePageTable(PageTableEntry[] pageTable) {
+
+        PageTableEntry[] ret = new PageTableEntry[pageTable.length];
+        for (int i = 0; i < pageTable.length; i++) {
+            ret[i] = new PageTableEntry(pageTable[i]);
+            if (ret[i].isMappedtoMemory() || ret[i].isMappedtoDisc()) {
+                ret[i].setCopyOnWrite(true);
+                pageTable[i].setCopyOnWrite(true);
+            }
+        }
+        return ret;
+    }
+
+    public void releasePageTable(PageTableEntry[] pageTable) {
+        for (int i=0; i<pageTable.length; i++) {
+            PageTableEntry e = pageTable[i];
+            pageTable[i] = null;
+            if (e.isMappedtoMemory() && !e.isCopyOnWrite()) {
+                freeMemoryPages.add(e.getSegmentNo());
+            }
+        }
+    }
+
+    @Override
+    public void handle(InterruptSource source) {
+        PageFault fault = (PageFault) source;
+        PageTableEntry entry = fault.getEntry();
+        if (entry == null) {
+            throw new SegmentationViolation();
+        }
+        if (entry.isMappedtoMemory()) {
+            int newPage = getFreePage();
+            mmu.copySegment(newPage, entry.getSegmentNo());
+            entry.setSegmentNo(newPage);
+            entry.setCopyOnWrite(false);
+        } else {
+            entry.setSegmentNo(getFreePage());
+            entry.setMappedToMemory(true);
+        }
     }
 
     private int getFreePage() {
@@ -36,14 +77,7 @@ public class VMM implements InterruptHandler {
         return result;
     }
 
-    @Override
-    public void handle(InterruptSource source) {
-        PageFault fault = (PageFault) source;
-        PageTableEntry entry = fault.getEntry();
-        logger.info("Handling page fault on segment " + entry.getSegmentNo());
-        entry.setSegmentNo(getFreePage());
-        entry.setMappedToMemory(true);
-
-        logger.info("Allocating segment " + entry.getSegmentNo());
+    void shutdown() {
+        logger.info("Free Memory: " + freeMemoryPages.size() + " pages.");
     }
 }

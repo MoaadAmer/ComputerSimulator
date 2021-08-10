@@ -53,6 +53,8 @@ public class ProcessControlBlock {
         if (parent != null) {
             this.program = parent.program;
             this.registers = new Registers(parent.registers);
+            this.pageTable = OperatingSystem.getInstance().vmm.clonePageTable(parent.pageTable);
+
         } else {
             this.registers = new Registers();
         }
@@ -74,9 +76,13 @@ public class ProcessControlBlock {
             return false;
         }
         setRegistersFor(program);
+        if (pageTable != null) {
+            OperatingSystem.getInstance().vmm.releasePageTable (pageTable);
+        }
+
         pageTable = new PageTableEntry[program.getDataSegments() + 2];
-        for (int i = 0; i < pageTable.length; i++) {
-            pageTable[i] = new PageTableEntry();
+        for (PageTableEntry entry : pageTable) {
+            entry = new PageTableEntry();
         }
 
         return true;
@@ -93,6 +99,9 @@ public class ProcessControlBlock {
 
         idMap.remove(id);
 
+        OperatingSystem.getInstance().vmm.releasePageTable (pageTable);
+        pageTable = null;
+
     }
 
 
@@ -106,7 +115,6 @@ public class ProcessControlBlock {
     public void run(CPU cpu) {
         cpu.contextSwitch(program, registers);
         cpu.setPageTable(pageTable);
-
         registers.setFlag(Registers.FLAG_USER_MODE, true);
     }
 
